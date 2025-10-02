@@ -6,9 +6,10 @@ authors = [
     {name = "Thanathip Limna",email = "boatkrap@gmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.13,<4"
 dependencies = [
-    "aiocoap (>=0.4.16,<0.5.0)"
+    "aiocoap (>=0.4.16,<0.5.0)",
+    "aiomqtt (>=2.4.0,<3.0.0)"
 ]
 
 
