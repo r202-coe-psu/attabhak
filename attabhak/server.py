@@ -21,9 +21,9 @@ class Server:
 
         self.monitor_tasks.append(
             asyncio.create_task(
-                monitor.MQTTMonitor(self.config.get("broker_url")).monitor(
-                    self.config.get("topic")
-                )
+                monitor.MQTTMonitor(
+                    self.config.get("broker_url"), self.config.get("topic")
+                ).run()
             )
         )
 
