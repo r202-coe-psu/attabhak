@@ -2,7 +2,7 @@ import datetime
 import logging
 import asyncio
 
-from . import monitor
+from .monitors import dustrack
 
 
 class Server:
@@ -10,7 +10,7 @@ class Server:
         self.running = False
         self.logger = logging.getLogger("attabhak.server")
         self.monitor_tasks = []
-        self.monitors = []
+
 
         self.config = dict(
             broker_url="localhost",
@@ -23,13 +23,12 @@ class Server:
             format="%(asctime)s %(levelname)s %(name)s: %(message)s",
         )
 
-    async def start(self):
-        mqtt_monitor = monitor.MQTTMonitor(
-            self.config.get("broker_url"), self.config.get("topic")
-        )
-        self.monitors.append(mqtt_monitor)
+        self.dustrack = dustrack.DustrakClient(ip="192.168.8.1", port=55832)
+        await self.dustrack.init()
+        await self.dustrack.setup()
 
-        self.monitor_tasks.append(asyncio.create_task(mqtt_monitor.run()))
+    async def start(self):
+
 
         self.running = True
         self.logger.info(f"Server started")
