@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 
 
 class DustrakClient:
@@ -111,6 +112,7 @@ class DustrakClient:
             return {}
 
         data = {
+            "timestamp": datetime.datetime.now().timestamp(),
             "runtime": response_list[0],
             "pm_1": response_list[1],
             "pm_2_5": response_list[2],
