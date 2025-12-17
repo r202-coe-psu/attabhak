@@ -81,10 +81,15 @@ class SanThingsClient:
             response = await protocol.request(request).response
         except Exception as e:
             logger.exception(e)
-            # await self.auth()
             return False
 
-        if not response.code.is_successful():
-            return False
+        if response.code.is_successful():
+            return True
 
-        return True
+        if asyncio.code in [
+            aiocoap.numbers.codes.Code.FORBIDDEN,
+            aiocoap.numbers.codes.Code.UNAUTHORIZED,
+        ]:
+            self.auth()
+
+        return False

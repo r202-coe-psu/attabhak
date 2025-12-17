@@ -21,6 +21,7 @@ class Server:
         self.interval: int = settings.INTERVAL
         self.queue: asyncio.Queue = asyncio.Queue()
         self.upload_task = None
+        self.update_configuration_task = None
         self.max_queue_size: int = 100
 
     async def set_up(self):
@@ -33,6 +34,9 @@ class Server:
         await self.connect_santhings()
 
         self.upload_task = asyncio.create_task(self.upload_data())
+        self.update_configuration_task = asyncio.create_task(
+            self.update_configuration()
+        )
 
     async def connect_dustrack(self):
 
@@ -51,10 +55,13 @@ class Server:
                 settings.SANTHINGS_DEVICE_ID, settings.SANTHINGS_SECRET_KEY, settings
             )
             await self.santhings.auth()
-            self.santhings_settings = await self.santhings.get_settings()
-            self.interval = self.santhings_settings.get("data_interval", self.interval)
+            await self.update_santhings_configuration()
         except Exception as e:
             logger.exception(e)
+
+    async def update_santhings_configuration(self):
+        self.santhings_settings = await self.santhings.get_settings()
+        self.interval = self.santhings_settings.get("data_interval", self.interval)
 
     async def start(self):
 
@@ -71,9 +78,11 @@ class Server:
 
     async def stop(self):
         self.logger.info(f"Trying to stop server...")
+        self.running = False
+        await asyncio.stop(1)
 
         self.upload_task.cancel()
-        self.running = False
+        self.update_configuration_task.cancel()
         self.logger.info(f"Server stopped")
 
     async def store_data(self, data):
@@ -83,6 +92,7 @@ class Server:
         return None
 
     async def upload_data(self):
+        last_runtime = 0
         while self.running:
             if self.queue.qsize() < self.max_queue_size // 2:
                 while (
@@ -96,11 +106,22 @@ class Server:
                 continue
 
             data = await self.queue.get()
-            result = await self.santhings.send(data)
-            print("send", result, data)
-            if not result:
-                self.queue.put(data)
+            if data.get("runtime") != last_runtime:
+                result = await self.santhings.send(data)
+                print("send", result, data)
+                last_runtime = data.get("runtime")
+                if not result:
+                    self.queue.put(data)
+            else:
+                print("drop", data)
 
             while self.queue.qsize() > self.max_queue_size:
                 data = await self.queue.get()
                 await self.store_data(data)
+
+    async def update_configuration(self):
+        wait_time = 60 * 60  # in second
+        while self.running:
+            logger.debug("update santhings configuration")
+            await self.update_santhings_configuration()
+            await asyncio.sleep(wait_time)
