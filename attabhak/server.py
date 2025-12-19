@@ -24,7 +24,7 @@ class Server:
         self.queue: asyncio.Queue = asyncio.Queue()
         self.upload_task = None
         self.update_configuration_task = None
-        self.max_queue_size: int = 100
+        self.max_queue_size: int = 50
 
     async def set_up(self):
         logging.basicConfig(
@@ -84,9 +84,9 @@ class Server:
         await self.set_up()
         while self.running:
             data = await self.dustrack.read_sensor()
-            print("Dustrak data:", data)
             await self.queue.put(data)
             await asyncio.sleep(self.interval)
+            # await asyncio.sleep(1)
 
     async def stop(self):
         self.logger.info(f"Trying to stop server...")
@@ -117,33 +117,46 @@ class Server:
     async def upload_data(self):
         last_runtime = 0
         while self.running:
+            logger.debug(f"upload data, queue size: {self.queue.qsize()} max size: {self.max_queue_size}")
             if self.queue.qsize() < self.max_queue_size // 2:
-                while (
-                    data := await self.restore_data()
-                    and self.queue.qsize() <= self.max_queue_size
-                ):
+                while self.queue.qsize() <= self.max_queue_size:
+
+                    try: 
+                        data = await self.restore_data()
+                    except Exception as e:
+                        logger.exception(f"Error restoring data: {e}")
+                        break
+
+                    if not data:
+                        break
+
                     logger.debug(f"restore data: {data}")
                     await self.queue.put(data)
 
             if self.queue.empty():
-                await asyncio.sleep(1)
+                await asyncio.sleep(10)
                 continue
 
             data = await self.queue.get()
             if data.get("runtime") != last_runtime:
                 result = await self.santhings.send(data)
-                # result = False
                 logger.debug(f"send: {result} {data}")
                 last_runtime = data.get("runtime")
                 if not result:
+                    logger.debug(f"re-queue data: {data}")
+                    
                     await self.queue.put(data)
+                    # await asyncio.sleep(120)
             else:
                 logger.debug(f"drop : {data}")
 
             while self.queue.qsize() > self.max_queue_size:
                 data = await self.queue.get()
                 logger.debug(f"store data: {data}")
-                await self.store_data(data)
+                try:
+                    await self.store_data(data)
+                except Exception as e:
+                    logger.exception(f"Error storing data: {e}")
 
     async def update_configuration(self):
         wait_time = 60 * 60  # in second
