@@ -1,15 +1,17 @@
 import datetime
 import logging
 import asyncio
+import pathlib
 
 
 from .monitors import dustrack
 from .config import settings
+from . import model
+from sqlmodel import select
 
 from .clients.santhings import SanThingsClient
 
 import logging
-
 logger = logging.getLogger(__name__)
 
 
@@ -28,8 +30,17 @@ class Server:
         logging.basicConfig(
             level=logging.DEBUG,
             format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+            handlers=[logging.StreamHandler()],
         )
+        
+        logging.getLogger("attabhak").setLevel(logging.DEBUG)
+        for logger_name in logging.root.manager.loggerDict:
+            if not logger_name.startswith("attabhak"):
+                logging.getLogger(logger_name).setLevel(logging.WARNING)
 
+        pathlib.Path("./data").mkdir(parents=True, exist_ok=True)       
+
+        await model.create_db_and_tables()
         await self.connect_dustrack()
         await self.connect_santhings()
 
@@ -73,22 +84,34 @@ class Server:
         await self.set_up()
         while self.running:
             data = await self.dustrack.read_sensor()
+            print("Dustrak data:", data)
             await self.queue.put(data)
             await asyncio.sleep(self.interval)
 
     async def stop(self):
         self.logger.info(f"Trying to stop server...")
         self.running = False
-        await asyncio.stop(1)
+        await asyncio.sleep(1)
 
         self.upload_task.cancel()
         self.update_configuration_task.cancel()
         self.logger.info(f"Server stopped")
 
     async def store_data(self, data):
-        print("store data", data)
+        async with model.get_session() as session:
+            sensor_data = model.SensorData(data=data)
+            session.add(sensor_data)
+            await session.commit()
 
     async def restore_data(self):
+        async with model.get_session() as session:
+            statement = select(model.SensorData).limit(1)
+            result = await session.execute(statement)
+            sensor_data = result.scalars().first()
+            if sensor_data:
+                await session.delete(sensor_data)
+                await session.commit()
+                return sensor_data.data
         return None
 
     async def upload_data(self):
@@ -99,6 +122,7 @@ class Server:
                     data := await self.restore_data()
                     and self.queue.qsize() <= self.max_queue_size
                 ):
+                    logger.debug(f"restore data: {data}")
                     await self.queue.put(data)
 
             if self.queue.empty():
@@ -108,15 +132,17 @@ class Server:
             data = await self.queue.get()
             if data.get("runtime") != last_runtime:
                 result = await self.santhings.send(data)
-                print("send", result, data)
+                # result = False
+                logger.debug(f"send: {result} {data}")
                 last_runtime = data.get("runtime")
                 if not result:
-                    self.queue.put(data)
+                    await self.queue.put(data)
             else:
-                print("drop", data)
+                logger.debug(f"drop : {data}")
 
             while self.queue.qsize() > self.max_queue_size:
                 data = await self.queue.get()
+                logger.debug(f"store data: {data}")
                 await self.store_data(data)
 
     async def update_configuration(self):

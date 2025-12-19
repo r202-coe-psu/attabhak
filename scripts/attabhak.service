@@ -1,0 +1,18 @@
+[Unit]
+Description=Attabha Client
+After=multi-user.target
+
+[Service]
+ExecStart=/home/tl/attabhak/.venv/bin/attabhak
+WorkingDirectory=/home/tl/attabhak
+StandardOutput=append:/var/log/attabhak/attabhak.log
+StandardError=append:/var/log/attabhak/attabhak-error.log
+SyslogIdentifier='attabhak'
+User=tl
+Group=tl
+Restart=always
+Environment=""
+
+
+[Install]
+WantedBy=multi-user.target
