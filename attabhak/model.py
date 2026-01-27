@@ -4,7 +4,11 @@ from typing import Optional, AsyncGenerator
 from datetime import datetime
 from contextlib import asynccontextmanager
 from sqlmodel import JSON, SQLModel, Field, create_engine, Session, Column
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker as sessionmaker
+from sqlalchemy.ext.asyncio import (
+    create_async_engine,
+    AsyncSession,
+    async_sessionmaker as sessionmaker,
+)
 
 
 class SensorData(SQLModel, table=True):
@@ -30,13 +34,13 @@ async def create_db_and_tables():
 
 
 AsyncSessionLocal = sessionmaker(
-    engine, 
-    class_=AsyncSession, 
-    expire_on_commit=False # Prevents automatic data refresh after a commit
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,  # Prevents automatic data refresh after a commit
 )
+
 
 @asynccontextmanager
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         yield session
-

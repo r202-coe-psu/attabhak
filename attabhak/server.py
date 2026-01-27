@@ -12,6 +12,7 @@ from sqlmodel import select
 from .clients.santhings import SanThingsClient
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -32,13 +33,13 @@ class Server:
             format="%(asctime)s %(levelname)s %(name)s: %(message)s",
             handlers=[logging.StreamHandler()],
         )
-        
+
         logging.getLogger("attabhak").setLevel(logging.DEBUG)
         for logger_name in logging.root.manager.loggerDict:
             if not logger_name.startswith("attabhak"):
                 logging.getLogger(logger_name).setLevel(logging.WARNING)
 
-        pathlib.Path("./data").mkdir(parents=True, exist_ok=True)       
+        pathlib.Path("./data").mkdir(parents=True, exist_ok=True)
 
         await model.create_db_and_tables()
         await self.connect_dustrack()
@@ -60,7 +61,6 @@ class Server:
             logger.exception(e)
 
     async def connect_santhings(self):
-
         try:
             self.santhings = SanThingsClient(
                 settings.SANTHINGS_DEVICE_ID, settings.SANTHINGS_SECRET_KEY, settings
@@ -71,8 +71,11 @@ class Server:
             logger.exception(e)
 
     async def update_santhings_configuration(self):
-        self.santhings_settings = await self.santhings.get_settings()
-        self.interval = self.santhings_settings.get("data_interval", self.interval)
+        try:
+            self.santhings_settings = await self.santhings.get_settings()
+            self.interval = self.santhings_settings.get("data_interval", self.interval)
+        except Exception as e:
+            logger.exception(e)
 
     async def start(self):
 
@@ -117,11 +120,13 @@ class Server:
     async def upload_data(self):
         last_runtime = 0
         while self.running:
-            logger.debug(f"upload data, queue size: {self.queue.qsize()} max size: {self.max_queue_size}")
+            logger.debug(
+                f"upload data, queue size: {self.queue.qsize()} max size: {self.max_queue_size}"
+            )
             if self.queue.qsize() < self.max_queue_size // 2:
                 while self.queue.qsize() <= self.max_queue_size:
 
-                    try: 
+                    try:
                         data = await self.restore_data()
                     except Exception as e:
                         logger.exception(f"Error restoring data: {e}")
@@ -139,12 +144,18 @@ class Server:
 
             data = await self.queue.get()
             if data.get("runtime") != last_runtime:
-                result = await self.santhings.send(data)
-                logger.debug(f"send: {result} {data}")
-                last_runtime = data.get("runtime")
+                result = None
+                try:
+                    if self.santhings:
+                        result = await self.santhings.send(data)
+                        logger.debug(f"send: {result} {data}")
+                        last_runtime = data.get("runtime")
+                except Exception as e:
+                    logger.exception(e)
+
                 if not result:
                     logger.debug(f"re-queue data: {data}")
-                    
+
                     await self.queue.put(data)
                     # await asyncio.sleep(120)
             else:

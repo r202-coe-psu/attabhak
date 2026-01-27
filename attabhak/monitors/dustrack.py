@@ -111,14 +111,15 @@ class DustrakClient:
         except AttributeError:
             return {}
 
+        mili_to_micro = 1000  # convert mg/m3 to ug/m3 average 10 minutes
         data = {
             "timestamp": datetime.datetime.now(datetime.timezone.utc).timestamp(),
-            "runtime": response_list[0],
-            "pm_1": response_list[1],
-            "pm_2_5": response_list[2],
-            "pm_4": response_list[3],
-            "pm_10": response_list[4],
-            "pm_total": response_list[5],
+            "runtime": int(response_list[0]),
+            "pm_1": float(response_list[1]) * mili_to_micro,
+            "pm_2_5": float(response_list[2]) * mili_to_micro,
+            "pm_4": float(response_list[3]) * mili_to_micro,
+            "pm_10": float(response_list[4]) * mili_to_micro,
+            "pm_total": float(response_list[5]) * mili_to_micro,
         }
         # print('pm sensor data : ', data)
 
