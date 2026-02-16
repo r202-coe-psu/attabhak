@@ -80,7 +80,8 @@ class Server:
     async def start(self):
 
         self.running = True
-        self.logger.info(f"Server started")
+        self.logger.info(f"Server started wait for 1m")
+        await asyncio.sleep(60)
         await self.run()
 
     async def run(self):

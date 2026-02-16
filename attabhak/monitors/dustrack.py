@@ -1,5 +1,8 @@
 import asyncio
 import datetime
+import logging
+
+logger = logging.get_logger_name("attabhak")
 
 
 class DustrakClient:
@@ -10,15 +13,15 @@ class DustrakClient:
         self.writer = None
 
     async def init(self):
-        print("Initialing")
+        logger.debug("Initialing")
         try:
             self.reader, self.writer = await asyncio.open_connection(self.ip, self.port)
         except (OSError, asyncio.TimeoutError):
-            print("Unable to connect")
+            logger.warning("Unable to connect")
             await self.close()
             return False
 
-        print("Initial successfully")
+        logger.debug("Initial successfully")
         return True
 
     async def setup(self):
@@ -35,7 +38,10 @@ class DustrakClient:
         if self.writer:
             self.writer.close()
             await self.writer.wait_closed()
-        print("Closed")
+        if self.reader:
+            self.reader.close()
+            await self.reader.wait_closed()
+        logger.debug("DustTrack closed socket connection")
 
     async def shutdown(self):
         await self.send_msg("MSHUTDOWN")
@@ -43,9 +49,11 @@ class DustrakClient:
         print("Shutdown!")
 
     async def send_msg(self, msg, response_line=2):
-        if not self.writer or self.writer.is_closing():
-            print("Socket is not connected")
-            return
+        while not self.writer or self.writer.is_closing():
+            logger.debug("Socket is not connected")
+            await asyncio.sleep(1)
+            await self.close()
+            await self.setup()
 
         try:
             self.writer.write(f"{msg}\r\n".encode())
@@ -57,7 +65,7 @@ class DustrakClient:
                     break
                 data.extend(res)
         except OSError:
-            print("Cannot receive messages")
+            logger.debug("Cannot receive messages")
             return
 
         return data.decode().strip()
