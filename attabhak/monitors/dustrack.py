@@ -2,7 +2,7 @@ import asyncio
 import datetime
 import logging
 
-logger = logging.get_logger_name("attabhak")
+logger = logging.getLogger("attabhak")
 
 
 class DustrakClient:
@@ -35,12 +35,16 @@ class DustrakClient:
         return False
 
     async def close(self):
-        if self.writer:
-            self.writer.close()
-            await self.writer.wait_closed()
-        if self.reader:
-            self.reader.close()
-            await self.reader.wait_closed()
+        try:
+            if self.writer:
+                self.writer.close()
+                await self.writer.wait_closed()
+            if self.reader:
+                self.reader.close()
+                await self.reader.wait_closed()
+        except Exception as e:
+            logger.execption(e)
+
         logger.debug("DustTrack closed socket connection")
 
     async def shutdown(self):
