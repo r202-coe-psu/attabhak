@@ -43,7 +43,7 @@ class DustrakClient:
                 self.reader.close()
                 await self.reader.wait_closed()
         except Exception as e:
-            logger.execption(e)
+            logger.exception(e)
 
         logger.debug("DustTrack closed socket connection")
 
