@@ -86,7 +86,7 @@ class SanThingsClient:
         if response.code.is_successful():
             return True
 
-        if asyncio.code in [
+        if reponse.code in [
             aiocoap.numbers.codes.Code.FORBIDDEN,
             aiocoap.numbers.codes.Code.UNAUTHORIZED,
         ]:
