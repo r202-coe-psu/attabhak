@@ -12,11 +12,13 @@ class SanThingsClient:
         self.secret_key = secret_key
         self.host_uri = settings.SANTHINGS_COAP_URI
 
+        self.access_token = ""
+        self.refresh_token = ""
         self.data_interval = 1
-        print("SanThingsClient initialized", settings)
+        logger.debug("SanThingsClient initialized for device %s", self.device_id)
 
     async def auth(self):
-        print("Beginning Authentication")
+        logger.info("Beginning authentication")
         payload = {
             "device_id": self.device_id,
             "secret_key": self.secret_key,
@@ -36,6 +38,9 @@ class SanThingsClient:
             logger.exception(e)
             self.access_token = ""
             self.refresh_token = ""
+            return
+        finally:
+            await protocol.shutdown()
 
         response_data = json.loads(response.payload.decode("utf-8"))
 
@@ -58,6 +63,8 @@ class SanThingsClient:
         except Exception as e:
             logger.exception(e)
             return dict()
+        finally:
+            await protocol.shutdown()
 
         if not response.code.is_successful():
             return dict()
@@ -82,14 +89,16 @@ class SanThingsClient:
         except Exception as e:
             logger.exception(e)
             return False
+        finally:
+            await protocol.shutdown()
 
         if response.code.is_successful():
             return True
 
-        if reponse.code in [
+        if response.code in [
             aiocoap.numbers.codes.Code.FORBIDDEN,
             aiocoap.numbers.codes.Code.UNAUTHORIZED,
         ]:
-            self.auth()
+            await self.auth()
 
         return False

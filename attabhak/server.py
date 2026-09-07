@@ -1,8 +1,6 @@
-import datetime
 import logging
 import asyncio
 import pathlib
-
 
 from .monitors import dustrack
 from .config import settings
@@ -11,21 +9,21 @@ from sqlmodel import select
 
 from .clients.santhings import SanThingsClient
 
-import logging
-
 logger = logging.getLogger(__name__)
 
 
 class Server:
     def __init__(self):
         self.running: bool = False
-        self.logger = logging.getLogger("attabhak.server")
         self.monitor_tasks: list = []
         self.interval: int = settings.INTERVAL
         self.queue: asyncio.Queue = asyncio.Queue()
         self.upload_task = None
         self.update_configuration_task = None
         self.max_queue_size: int = 50
+        self.dustrack = None
+        self.santhings = None
+        self.santhings_settings: dict = {}
 
     async def set_up(self):
         logging.basicConfig(
@@ -78,9 +76,8 @@ class Server:
             logger.exception(e)
 
     async def start(self):
-
         self.running = True
-        self.logger.info(f"Server started wait for 1m")
+        logger.info("Server started, waiting 1m before first run")
         await asyncio.sleep(60)
         await self.run()
 
@@ -90,16 +87,17 @@ class Server:
             data = await self.dustrack.read_sensor()
             await self.queue.put(data)
             await asyncio.sleep(self.interval)
-            # await asyncio.sleep(1)
 
     async def stop(self):
-        self.logger.info(f"Trying to stop server...")
+        logger.info("Trying to stop server...")
         self.running = False
         await asyncio.sleep(1)
 
-        self.upload_task.cancel()
-        self.update_configuration_task.cancel()
-        self.logger.info(f"Server stopped")
+        if self.upload_task:
+            self.upload_task.cancel()
+        if self.update_configuration_task:
+            self.update_configuration_task.cancel()
+        logger.info("Server stopped")
 
     async def store_data(self, data):
         async with model.get_session() as session:
@@ -109,7 +107,11 @@ class Server:
 
     async def restore_data(self):
         async with model.get_session() as session:
-            statement = select(model.SensorData).limit(1)
+            statement = (
+                select(model.SensorData)
+                .order_by(model.SensorData.timestamp)
+                .limit(1)
+            )
             result = await session.execute(statement)
             sensor_data = result.scalars().first()
             if sensor_data:
@@ -156,9 +158,7 @@ class Server:
 
                 if not result:
                     logger.debug(f"re-queue data: {data}")
-
                     await self.queue.put(data)
-                    # await asyncio.sleep(120)
             else:
                 logger.debug(f"drop : {data}")
 

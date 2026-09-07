@@ -28,10 +28,10 @@ class DustrakClient:
         await self.init()
         sn = await self.read_sn()
         if sn:
-            print("Dustrak machine SN:", sn)
+            logger.info("Dustrak machine SN: %s", sn)
             return True
 
-        print("Dustrak machine SN read ERROR")
+        logger.warning("Dustrak machine SN read ERROR")
         return False
 
     async def close(self):
@@ -50,7 +50,7 @@ class DustrakClient:
     async def shutdown(self):
         await self.send_msg("MSHUTDOWN")
         await self.close()
-        print("Shutdown!")
+        logger.info("Shutdown!")
 
     async def send_msg(self, msg, response_line=2):
         while not self.writer or self.writer.is_closing():
@@ -86,38 +86,37 @@ class DustrakClient:
             response = response_text.split(",")
         except AttributeError:
             return {}
-        print("Set zero prosess:")
+        logger.info("Set zero process:")
 
         while int(response[0]) < 60:
             response_text = await self.send_msg("RMZEROING")
             try:
                 response = response_text.split(",")
             except AttributeError:
-                return ""
-            print(f"Zeroing complete {int(int(response[0]) / 60 * 100):d}%")
+                return {}
+            logger.info("Zeroing complete %d%%", int(int(response[0]) / 60 * 100))
             await asyncio.sleep(1)
 
-        print("Zeroing successfully")
+        logger.info("Zeroing successfully")
         return await self.zero_value()
 
     async def stop_machine(self):
         response = await self.send_msg("MSTOP")
-        print(f"Machine stopped {response}")
+        logger.info("Machine stopped %s", response)
 
     async def start_sensor(self):
         response = await self.send_msg("MSTOP")
         if response == "OK":
-            print("Machine stopped")
+            logger.info("Machine stopped")
         await asyncio.sleep(1)
 
         response = await self.send_msg("MSTART")
         if response == "OK":
-            print("Starting machine")
+            logger.info("Starting machine")
         await asyncio.sleep(30)
 
     async def read_sensor(self):
         response = await self.send_msg("RMMEAS")
-        # print('read pm sensor response : ', response)
         try:
             response_list = response.split(",")
         except AttributeError:
@@ -133,13 +132,12 @@ class DustrakClient:
             "pm_10": float(response_list[4]) * mili_to_micro,
             "pm_total": float(response_list[5]) * mili_to_micro,
         }
-        # print('pm sensor data : ', data)
 
         return data
 
     async def read_sn(self):
         receive = await self.send_msg("RDSN")
-        print("serial number : ", receive)
+        logger.info("serial number: %s", receive)
         return receive
 
     async def zero_value(self):
