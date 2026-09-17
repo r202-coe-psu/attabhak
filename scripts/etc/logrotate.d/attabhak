@@ -1,0 +1,16 @@
+/var/log/attabhak/attabhak.log {
+  rotate 2
+  daily
+  compress
+  missingok
+  notifempty
+}
+
+/var/log/attabhak/attabhak-error.log {
+  rotate 2
+  daily
+  compress
+  missingok
+  notifempty
+}
+
