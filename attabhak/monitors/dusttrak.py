@@ -5,7 +5,7 @@ import logging
 logger = logging.getLogger("attabhak")
 
 
-class DustrakClient:
+class DusttrakClient:
     def __init__(self, ip, port):
         self.ip = ip
         self.port = port
@@ -28,10 +28,10 @@ class DustrakClient:
         await self.init()
         sn = await self.read_sn()
         if sn:
-            logger.info("Dustrak machine SN: %s", sn)
+            logger.info("Dusttrak machine SN: %s", sn)
             return True
 
-        logger.warning("Dustrak machine SN read ERROR")
+        logger.warning("Dusttrak machine SN read ERROR")
         return False
 
     async def close(self):

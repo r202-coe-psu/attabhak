@@ -9,8 +9,13 @@ print("Loading settings from:", DOTENV)
 
 class Settings(BaseSettings):
 
+    MONITOR: str = "DUSTRAK"
+
     DUSTRACT_HOST: str = "192.168.8.88"
     DUSTRACT_PORT: int = 3602
+
+    APM6_HOST: str = "localhost"
+    APM6_PORT: int = 1883
 
     SANTHINGS_COAP_URI: str = "coap://things.airthai.in.th"
     SANTHINGS_DEVICE_ID: str = "your_device_id"

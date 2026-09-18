@@ -2,7 +2,7 @@ import logging
 import asyncio
 import pathlib
 
-from .monitors import dustrack
+from .monitors import dusttrak, apm6
 from .config import settings
 from . import model
 from sqlmodel import select
@@ -21,7 +21,8 @@ class Server:
         self.upload_task = None
         self.update_configuration_task = None
         self.max_queue_size: int = 50
-        self.dustrack = None
+        self.apm6 = None
+        self.dusttrak = None
         self.santhings = None
         self.santhings_settings: dict = {}
 
@@ -40,7 +41,10 @@ class Server:
         pathlib.Path("./data").mkdir(parents=True, exist_ok=True)
 
         await model.create_db_and_tables()
-        await self.connect_dustrack()
+        if settings.MONITOR.strip().upper() == "APM6":
+            await self.connect_apm6()
+        else:
+            await self.connect_dusttrak()
         await self.connect_santhings()
 
         self.upload_task = asyncio.create_task(self.upload_data())
@@ -48,13 +52,20 @@ class Server:
             self.update_configuration()
         )
 
-    async def connect_dustrack(self):
+    async def connect_dusttrak(self):
 
         try:
-            self.dustrack = dustrack.DustrakClient(
+            self.dusttrak = dusttrak.DustrakClient(
                 settings.DUSTRACT_HOST, settings.DUSTRACT_PORT
             )
-            await self.dustrack.setup()
+            await self.dusttrak.setup()
+        except Exception as e:
+            logger.exception(e)
+
+    async def connect_apm6(self):
+        try:
+            self.apm6 = apm6.Apm6Client(settings.APM6_HOST, settings.APM6_PORT)
+            await self.apm6.setup()
         except Exception as e:
             logger.exception(e)
 
@@ -84,8 +95,13 @@ class Server:
     async def run(self):
         await self.set_up()
         while self.running:
-            data = await self.dustrack.read_sensor()
-            await self.queue.put(data)
+            if self.apm6:
+                data = await self.apm6.read_sensor()
+            elif self.dustrak:
+                data = await self.dusttrak.read_sensor()
+
+            if data:
+                await self.queue.put(data)
             await asyncio.sleep(self.interval)
 
     async def stop(self):
@@ -97,6 +113,8 @@ class Server:
             self.upload_task.cancel()
         if self.update_configuration_task:
             self.update_configuration_task.cancel()
+        if self.apm6:
+            await self.apm6.close()
         logger.info("Server stopped")
 
     async def store_data(self, data):
@@ -108,9 +126,7 @@ class Server:
     async def restore_data(self):
         async with model.get_session() as session:
             statement = (
-                select(model.SensorData)
-                .order_by(model.SensorData.timestamp)
-                .limit(1)
+                select(model.SensorData).order_by(model.SensorData.timestamp).limit(1)
             )
             result = await session.execute(statement)
             sensor_data = result.scalars().first()
