@@ -10,7 +10,29 @@ DEFAULT_TOPIC = "notif/ControlService.MonitorFactorAll"
 
 UNUSED_KEYS = ["aqi", "error", "event", "task_id", "task_type", "timestamp"]
 REPLACED_KEYS = dict(
-    ambient_humid="humidity", ambient_press="pressure", ambient_temp="temperature"
+    ambient_humid="humidity",
+    ambient_press="pressure",
+    ambient_temp="temperature",
+    so2="SO2",
+    so2_mg="SO2_mg",
+    so2_aver="SO2_avg",
+    so2_aver_mg="SO2_avg_mg",
+    o3="O3",
+    o3_mg="O3_mg",
+    o3_aver="O3_avg",
+    o3_aver_mg="O3_avg_mg",
+    no2="NO2",
+    no2_mg="NO2_mg",
+    no2_aver="NO2_avg",
+    no2_aver_mg="NO2_avg_mg",
+    co="CO",
+    co_mg="CO_mg",
+    co_aver="CO_avg",
+    co_aver_mg="CO_avg_mg",
+    pm25="pm_2_5",
+    pm25_aver="pm_2_5_avg",
+    pm10="pm_10",
+    pm10_aver="pm_10_avg",
 )
 
 
@@ -74,9 +96,6 @@ class Apm6Client:
             if "_temp" not in k and v < 0:
                 continue
 
-            if "aver" in k:
-                k = k.replace("aver", "avg")
-
             key = REPLACED_KEYS.get(k, k)
             response[key] = v / 10  # ten minuts measure 1
 
@@ -85,17 +104,11 @@ class Apm6Client:
                 continue
 
             sk = k.split("aver")[0].replace("_", "").strip()
-            print("check", sk, sk not in response)
-            try:
-                if sk not in response:
-                    response.pop(k.replace("aver", "avg"))
-            except Exception as e:
-                print(e)
-
-        print("step", 3)
+            sk = REPLACED_KEYS.get(sk, sk)
+            if sk not in response:
+                response.pop(REPLACED_KEYS.get(k, k))
 
         response["timestamp"] = datetime.datetime.now(datetime.timezone.utc).timestamp()
-        print("===>", response)
 
         await self.datas.put(response)
 
