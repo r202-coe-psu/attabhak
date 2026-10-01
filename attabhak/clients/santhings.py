@@ -99,7 +99,39 @@ class SanThingsClient:
             aiocoap.numbers.codes.Code.FORBIDDEN,
             aiocoap.numbers.codes.Code.UNAUTHORIZED,
         ]:
-            looger.debug(f'---> get {response.code}')
+            logger.debug(f'---> get {response.code}')
+            await self.auth()
+
+        return False
+
+    async def send_info(self, info):
+        endpoint_uri = (
+            f"{self.host_uri}/v2/device/info?access_token={self.access_token}"
+        )
+        payload = dict(data=info)
+
+        protocol = await aiocoap.Context.create_client_context()
+        request = aiocoap.Message(
+            code=aiocoap.POST,
+            uri=endpoint_uri,
+            payload=json.dumps(payload).encode("utf-8"),
+        )
+        try:
+            response = await protocol.request(request).response
+        except Exception as e:
+            logger.exception(e)
+            return False
+        finally:
+            await protocol.shutdown()
+
+        if response.code.is_successful():
+            return True
+
+        if response.code in [
+            aiocoap.numbers.codes.Code.FORBIDDEN,
+            aiocoap.numbers.codes.Code.UNAUTHORIZED,
+        ]:
+            logger.debug(f"---> get {response.code}")
             await self.auth()
 
         return False

@@ -44,8 +44,15 @@ class Apm6Client:
         self.data: dict = {}
         self.listen_task = None
         self.datas = asyncio.Queue(maxsize=100)
+        self.info: dict = {}
 
     async def setup(self):
+        self.info = {
+            "monitor": "APM6",
+            "host": self.broker_url,
+            "port": self.port,
+            "topic": self.topic,
+        }
         self.listen_task = asyncio.create_task(self._listen())
         logger.debug("APM6 listener started")
         return True

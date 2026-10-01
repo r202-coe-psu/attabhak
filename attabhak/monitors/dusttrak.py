@@ -11,6 +11,7 @@ class DusttrakClient:
         self.port = port
         self.reader = None
         self.writer = None
+        self.info: dict = {}
 
     async def init(self):
         logger.debug("Initialing")
@@ -29,6 +30,12 @@ class DusttrakClient:
         sn = await self.read_sn()
         if sn:
             logger.info("Dusttrak machine SN: %s", sn)
+            self.info = {
+                "monitor": "DUSTTRAK",
+                "host": self.ip,
+                "port": self.port,
+                "serial_number": sn,
+            }
             return True
 
         logger.warning("Dusttrak machine SN read ERROR")

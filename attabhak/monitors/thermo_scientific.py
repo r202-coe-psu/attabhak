@@ -104,6 +104,7 @@ class ThermoScientificClient:
         self.port = port
         self.reader = None
         self.writer = None
+        self.info: dict = {}
 
     async def init(self):
         logger.debug("Initialing")
@@ -126,6 +127,11 @@ class ThermoScientificClient:
         if not await self.init():
             return False
 
+        info = {
+            "monitor": "THERMO_SCIENTIFIC",
+            "host": self.ip,
+            "port": self.port,
+        }
         for cmd in (
             "Program No",
             "Instr Name",
@@ -137,6 +143,11 @@ class ThermoScientificClient:
         ):
             reply = await self.send_msg(cmd)
             logger.debug("> %s < %r", cmd, reply)
+            info[cmd.lower().replace(" ", "_")] = (
+                reply.decode("ascii", errors="replace").strip() if reply else None
+            )
+
+        self.info = info
 
         screen = await self.send_msg("IScreen")
         logger.debug("> IScreen (%d bytes of screen bitmap)", len(screen or b""))

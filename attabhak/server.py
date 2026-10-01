@@ -26,6 +26,7 @@ class Server:
         self.thermo_scientific = None
         self.santhings = None
         self.santhings_settings: dict = {}
+        self.device_info_sent: bool = False
 
     async def set_up(self):
         logging.basicConfig(
@@ -93,6 +94,19 @@ class Server:
             )
             await self.santhings.auth()
             await self.update_santhings_configuration()
+            await self.send_device_info()
+        except Exception as e:
+            logger.exception(e)
+
+    async def send_device_info(self):
+        monitor = self.apm6 or self.dusttrak or self.thermo_scientific
+        if not self.santhings or not monitor or not monitor.info:
+            logger.warning("no device info to send")
+            return
+
+        try:
+            self.device_info_sent = await self.santhings.send_info(monitor.info)
+            logger.debug(f"send device info: {self.device_info_sent} {monitor.info}")
         except Exception as e:
             logger.exception(e)
 
@@ -210,4 +224,6 @@ class Server:
         while self.running:
             logger.debug("update santhings configuration")
             await self.update_santhings_configuration()
+            if not self.device_info_sent:
+                await self.send_device_info()
             await asyncio.sleep(wait_time)
