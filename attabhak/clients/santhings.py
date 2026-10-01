@@ -90,6 +90,7 @@ class SanThingsClient:
             aiocoap.numbers.codes.Code.FORBIDDEN,
             aiocoap.numbers.codes.Code.UNAUTHORIZED,
         ]:
+            looger.debug(f'---> get {response.code}')
             self.auth()
 
         return False
