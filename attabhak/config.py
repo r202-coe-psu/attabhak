@@ -9,7 +9,7 @@ print("Loading settings from:", DOTENV)
 
 class Settings(BaseSettings):
 
-    MONITOR: str = "DUSTRAK"
+    MONITOR: str = "DUSTTRAK"
 
     DUSTRACT_HOST: str = "192.168.8.88"
     DUSTRACT_PORT: int = 3602
