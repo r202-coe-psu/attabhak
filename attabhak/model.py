@@ -1,9 +1,9 @@
 """Database models and engine setup using SQLModel and SQLite."""
 
-from typing import Optional, AsyncGenerator
+from typing import AsyncGenerator
 from datetime import datetime
 from contextlib import asynccontextmanager
-from sqlmodel import JSON, SQLModel, Field, create_engine, Session, Column
+from sqlmodel import JSON, SQLModel, Field, Column
 from sqlalchemy.ext.asyncio import (
     create_async_engine,
     AsyncSession,
@@ -23,7 +23,6 @@ class SensorData(SQLModel, table=True):
 # Database configuration
 DATABASE_URL = "sqlite+aiosqlite:///./data/attabhak.db"
 engine = create_async_engine(DATABASE_URL)
-# engine = create_async_engine(DATABASE_URL, echo=True)
 
 
 async def create_db_and_tables():

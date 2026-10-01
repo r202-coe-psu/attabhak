@@ -3,9 +3,15 @@ import asyncio
 from attabhak.server import Server
 
 
+async def run(server: Server):
+    try:
+        await server.start()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        await server.stop()
+
+
 def main():
     server = Server()
-    try:
-        asyncio.run(server.start())
-    except KeyboardInterrupt:
-        asyncio.run(server.stop())
+    asyncio.run(run(server))
