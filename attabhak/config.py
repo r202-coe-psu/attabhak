@@ -11,8 +11,8 @@ class Settings(BaseSettings):
 
     MONITOR: str = "DUSTTRAK"
 
-    DUSTRACT_HOST: str = "192.168.8.88"
-    DUSTRACT_PORT: int = 3602
+    DUSTTRAK_HOST: str = "192.168.8.88"
+    DUSTTRAK_PORT: int = 3602
 
     APM6_HOST: str = "localhost"
     APM6_PORT: int = 1883

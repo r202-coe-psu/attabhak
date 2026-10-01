@@ -73,7 +73,7 @@ class Server:
 
         try:
             self.dusttrak = dusttrak.DusttrakClient(
-                settings.DUSTRACT_HOST, settings.DUSTRACT_PORT
+                settings.DUSTTRAK_HOST, settings.DUSTTRAK_PORT
             )
             await self.dusttrak.setup()
         except Exception as e:
