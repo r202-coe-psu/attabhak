@@ -2,7 +2,7 @@ import logging
 import asyncio
 import pathlib
 
-from .monitors import dusttrak, apm6
+from .monitors import dusttrak, apm6, thermo_scientific
 from .config import settings
 from . import model
 from sqlmodel import select
@@ -23,6 +23,7 @@ class Server:
         self.max_queue_size: int = 50
         self.apm6 = None
         self.dusttrak = None
+        self.thermo_scientific = None
         self.santhings = None
         self.santhings_settings: dict = {}
 
@@ -41,7 +42,12 @@ class Server:
         pathlib.Path("./data").mkdir(parents=True, exist_ok=True)
 
         await model.create_db_and_tables()
-        if settings.MONITOR.strip().upper() == "APM6":
+        
+
+        monitor = settings.MONITOR.strip().upper()
+        if monitor == "THERMO_SCIENTIFIC":
+            await self.connect_thermo_scientific()
+        elif monitor == "APM6":
             await self.connect_apm6()
         else:
             await self.connect_dusttrak()
@@ -52,10 +58,21 @@ class Server:
             self.update_configuration()
         )
 
+    async def connect_thermo_scientific(self):
+
+        try:
+            self.thermo_scientific = thermo_scientific.ThermoScientificClient(
+                settings.THERMO_SCIENTIFIC_HOST, settings.THERMO_SCIENTIFIC_PORT
+            )
+            await self.thermo_scientific.setup()
+        except Exception as e:
+            logger.exception(e)
+
+
     async def connect_dusttrak(self):
 
         try:
-            self.dusttrak = dusttrak.DustrakClient(
+            self.dusttrak = dusttrak.DusttrakClient(
                 settings.DUSTRACT_HOST, settings.DUSTRACT_PORT
             )
             await self.dusttrak.setup()
@@ -95,13 +112,13 @@ class Server:
     async def run(self):
         await self.set_up()
         while self.running:
-            if self.apm6:
-                data = await self.apm6.read_sensor()
-            elif self.dustrak:
-                data = await self.dusttrak.read_sensor()
+            for monitor in [self.apm6, self.dusttrak, self.thermo_scientific]:
+                if monitor:
+                    data = await monitor.read_sensor()
 
-            if data:
-                await self.queue.put(data)
+                    if data:
+                        await self.queue.put(data)
+
             await asyncio.sleep(self.interval)
 
     async def stop(self):
@@ -115,6 +132,8 @@ class Server:
             self.update_configuration_task.cancel()
         if self.apm6:
             await self.apm6.close()
+        if self.thermo_scientific:
+            await self.thermo_scientific.close()
         logger.info("Server stopped")
 
     async def store_data(self, data):
