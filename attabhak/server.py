@@ -43,7 +43,6 @@ class Server:
         pathlib.Path("./data").mkdir(parents=True, exist_ok=True)
 
         await model.create_db_and_tables()
-        
 
         monitor = settings.MONITOR.strip().upper()
         if monitor == "THERMO_SCIENTIFIC":
@@ -68,7 +67,6 @@ class Server:
             await self.thermo_scientific.setup()
         except Exception as e:
             logger.exception(e)
-
 
     async def connect_dusttrak(self):
 

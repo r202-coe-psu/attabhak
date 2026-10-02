@@ -116,6 +116,7 @@ class Apm6Client:
                 response.pop(REPLACED_KEYS.get(k, k))
 
         response["timestamp"] = datetime.datetime.now(datetime.timezone.utc).timestamp()
+        response["o3"] = response["o3"] / 1000
 
         await self.datas.put(response)
 

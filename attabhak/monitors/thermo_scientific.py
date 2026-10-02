@@ -24,13 +24,30 @@ def _bit(value, n):
 
 def decode_erec(data: bytes) -> dict:
     if len(data) < EREC_BODY_LEN:
-        raise ValueError(
-            f"Packet too short: {len(data)} bytes, need {EREC_BODY_LEN}"
-        )
+        raise ValueError(f"Packet too short: {len(data)} bytes, need {EREC_BODY_LEN}")
 
-    (td, flags, conc, n5, avg24, n7, coef, bkg, rng, flow,
-     a_rh, a_inst, a_pres, a_det, a_flow, pump, heater,
-     temp_th, rh_th, int_idx) = struct.unpack_from(EREC_FMT, data)
+    (
+        td,
+        flags,
+        conc,
+        n5,
+        avg24,
+        n7,
+        coef,
+        bkg,
+        rng,
+        flow,
+        a_rh,
+        a_inst,
+        a_pres,
+        a_det,
+        a_flow,
+        pump,
+        heater,
+        temp_th,
+        rh_th,
+        int_idx,
+    ) = struct.unpack_from(EREC_FMT, data)
 
     # Time/date: inferred from captures (byte3=hour, byte4=minute,
     # byte5=month, byte6=day, byte7=year offset from 1950?). Verify!
@@ -38,7 +55,9 @@ def decode_erec(data: bytes) -> dict:
 
     try:
         # instrument clock is assumed to run in the host's local timezone
-        record_time = datetime.datetime(1950 + yy, month, day, hour, minute).astimezone()
+        record_time = datetime.datetime(
+            1950 + yy, month, day, hour, minute
+        ).astimezone()
     except ValueError:
         record_time = None
 
@@ -115,7 +134,9 @@ class ThermoScientificClient:
         except (OSError, asyncio.TimeoutError) as e:
             logger.warning(
                 "Thermo Scientific: unable to connect to %s:%s (%r)",
-                self.ip, self.port, e,
+                self.ip,
+                self.port,
+                e,
             )
             await self.close()
             return False
@@ -227,6 +248,9 @@ class ThermoScientificClient:
             conc *= 1000
             avg_24h *= 1000
 
+        if conc < 0:
+            return {}
+
         now = datetime.datetime.now(datetime.timezone.utc)
         record_time = rec["record_time"]
         if record_time is None:
@@ -244,6 +268,5 @@ class ThermoScientificClient:
             "pm_2_5_avg_24h": round(avg_24h, 3),
             "flow_lpm": rec["flow_lpm"],
         }
-
 
         return data
