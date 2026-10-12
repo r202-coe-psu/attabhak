@@ -206,6 +206,7 @@ class Server:
                 if not result:
                     logger.debug(f"re-queue data: {data}")
                     await self.queue.put(data)
+                    last_runtime = 0
             else:
                 logger.debug(f"drop : {data}")
 
